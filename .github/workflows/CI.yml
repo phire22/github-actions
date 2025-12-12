@@ -64,6 +64,6 @@ jobs:
           path: /tmp/images.tar
           key: ${{ steps.config.outputs.key }}
 
-      - name: Build and run Docker Compose
-        run: |
-          docker compose up -d
+      # - name: Build and run Docker Compose
+      #   run: |
+      #     docker compose up -d
