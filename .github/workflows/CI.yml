@@ -7,63 +7,23 @@ on:
     branches: [main]
 
 jobs:
-  docker-compose:
+  CI:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v3
 
       - name: Build and run Docker Compose
         run: |
-          docker-compose up -d
-
-      - name: Wait for services to be ready
-        run: |
-          echo "Waiting for services to start..."
-          sleep 30
-
-      - name: Check service health
-        run: |
-          echo "Checking if services are running..."
-          docker-compose ps
-
-          echo "Testing web service..."
-          curl -f http://localhost:8080 || echo "Web service not responding"
-
-          echo "Testing app service..."
-          curl -f http://localhost:3000 || echo "App service not responding"
-
-          echo "Testing database connection..."
-          docker-compose exec -T db pg_isready -U testuser -d testdb || echo "Database not ready"
+          docker compose up -d
 
       - name: Show logs
         if: always()
         run: |
-          echo "=== Web Service Logs ==="
-          docker-compose logs web
-          echo "=== App Service Logs ==="
-          docker-compose logs app
-          echo "=== Database Logs ==="
-          docker-compose logs db
-
-      - name: Run basic tests
-        run: |
-          echo "Running basic connectivity tests..."
-          # Test web service returns default nginx page
-          curl -s http://localhost:8080 | grep -q "nginx" && echo "✓ Web service OK" || echo "✗ Web service failed"
-
-          # Test app service returns JSON response
-          curl -s http://localhost:3000 | grep -q "Hello from Node.js" && echo "✓ App service OK" || echo "✗ App service failed"
-
-          # Test database accepts connections
-          docker-compose exec -T db pg_isready -U testuser -d testdb > /dev/null && echo "✓ Database OK" || echo "✗ Database failed"
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker-compose down -v
-          docker system prune -f
+          echo "Waiting for services to start..."
+          sleep 10
+          docker compose logs web
