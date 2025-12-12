@@ -1,0 +1,62 @@
+services:
+  servicebus-emulator:
+    container_name: "servicebus-emulator"
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    restart: always
+    volumes:
+      - "./servicebus/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:Z"
+    ports:
+      - "5672:5672"
+      - "5300:5300"
+    environment:
+      SQL_SERVER: mssql
+      MSSQL_SA_PASSWORD: "secret"
+      ACCEPT_EULA: "Y"
+      SQL_WAIT_INTERVAL: 1
+    depends_on:
+      mssql:
+        condition: service_healthy
+    networks:
+      sb-emulator:
+        aliases:
+          - "sb-emulator"
+
+  mssql:
+    container_name: "mssql"
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    restart: always
+    networks:
+      sb-emulator:
+        aliases:
+          - "mssql"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "secret"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S 127.0.0.1 -U sa -P 'secret' -Q \"SELECT 1\" -C"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mongodb:
+    image: mongo:8.0
+    container_name: mongodb
+    hostname: mongodb
+    restart: always
+    volumes:
+      - "./mongo/initdb.d:/docker-entrypoint-initdb.d:ro,Z"
+      - "${ROOT_DIRECTORY}/.mongo/data:/data/db:Z"
+      - "${ROOT_DIRECTORY}/.mongo/log:/var/log/mongodb:Z"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ""
+      MONGO_INITDB_ROOT_PASSWORD: ""
+    ports:
+      - "27017:27017"
+    networks:
+      - mongodb_network
+
+networks:
+  sb-emulator:
+  mongodb_network:
+    driver: bridge
+    name: mongo-network

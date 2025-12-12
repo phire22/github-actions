@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 Define Cache Key
+        id: cache-key
+        run: echo "key=mssql-2022-latest-v1" >> $GITHUB_OUTPUT
+
+      - name: 📥 Restore MSSQL Image from Cache
+        id: restore-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/mssql-image.tar
+          key: ${{ steps.cache-key.outputs.key }}
+
+      - name: 🐳 Load Image from Cache
+        if: steps.restore-cache.outputs.cache-hit == 'true'
+        run: |
+          echo "Cache hit! Loading MSSQL image from /tmp/mssql-image.tar"
+          docker load -i /tmp/mssql-image.tar
+
+      - name: ⬇️ Pull Image if Cache Miss
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache miss. Pulling mcr.microsoft.com/mssql/server:2022-latest"
+          docker pull mcr.microsoft.com/mssql/server:2022-latest
+
+      - name: Build and run Docker Compose
+        run: |
+          docker compose up -d
