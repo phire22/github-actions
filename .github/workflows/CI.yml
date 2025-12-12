@@ -51,6 +51,19 @@ jobs:
             docker pull $image
           done
 
+      - name: 📤 Save All Images to Cache
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache miss occurred. Saving new images to /tmp/images.tar"
+          docker save ${{ steps.config.outputs.IMAGE_LIST }} -o /tmp/images.tar
+          
+      - name: 💾 Save Cache
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/images.tar
+          key: ${{ steps.config.outputs.key }}
+
       - name: Build and run Docker Compose
         run: |
           docker compose up -d
