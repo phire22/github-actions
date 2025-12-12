@@ -17,28 +17,39 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 🔑 Define Cache Key
-        id: cache-key
-        run: echo "key=mssql-2022-latest-v1" >> $GITHUB_OUTPUT
+      - name: 🔑 Define Cache Key & Image List
+        id: config
+        run: |
+          IMAGES=(
+            "mcr.microsoft.com/azure-messaging/servicebus-emulator:latest"
+            "mcr.microsoft.com/mssql/server:2022-latest"
+            "mongo:8.0"
+          )
+          echo "IMAGE_LIST=${IMAGES[*]}" >> $GITHUB_OUTPUT
 
-      - name: 📥 Restore MSSQL Image from Cache
+          CACHE_KEY_SUFFIX=$(echo "${IMAGES[*]}" | sha256sum | awk '{print $1}')
+          echo "key=docker-compose-images-${CACHE_KEY_SUFFIX}" >> $GITHUB_OUTPUT
+
+      - name: 📥 Restore Images from Cache
         id: restore-cache
         uses: actions/cache/restore@v4
         with:
-          path: /tmp/mssql-image.tar
-          key: ${{ steps.cache-key.outputs.key }}
+          path: /tmp/images.tar
+          key: ${{ steps.config.outputs.key }}
 
-      - name: 🐳 Load Image from Cache
+      - name: 🐳 Load Images from Cache
         if: steps.restore-cache.outputs.cache-hit == 'true'
         run: |
-          echo "Cache hit! Loading MSSQL image from /tmp/mssql-image.tar"
-          docker load -i /tmp/mssql-image.tar
-
-      - name: ⬇️ Pull Image if Cache Miss
+          echo "Cache hit! Loading all images from /tmp/images.tar"
+          docker load -i /tmp/images.tar
+          
+      - name: ⬇️ Pull Images if Cache Miss
         if: steps.restore-cache.outputs.cache-hit != 'true'
         run: |
-          echo "Cache miss. Pulling mcr.microsoft.com/mssql/server:2022-latest"
-          docker pull mcr.microsoft.com/mssql/server:2022-latest
+          echo "Cache miss. Pulling all required images..."
+          for image in ${{ steps.config.outputs.IMAGE_LIST }}; do
+            docker pull $image
+          done
 
       - name: Build and run Docker Compose
         run: |
